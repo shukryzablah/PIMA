@@ -1,0 +1,56 @@
+---
+title: "Wrangle"
+author: "Shukry Zablah"
+date: "December 4, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Imports
+
+```{r message=FALSE}
+library(dplyr)
+```
+
+## Load Data
+
+```{r}
+newPIMA <- readRDS(file = "../data/PIMA_original.Rds")
+```
+
+## Modify Data
+
+### Create Variable Names
+
+```{r}
+names(newPIMA) <- c("pregnancies", "glucoseConcentration", "bloodPressure", "skinThickness", "insulin", "bmi", "diabetesPedigreeFunction", "age", "hasDiabetes")
+```
+
+### Make the Response a Factor
+
+```{r}
+newPIMA <- newPIMA %>% 
+  mutate(hasDiabetes = as.factor(hasDiabetes))
+```
+
+### Mark Missing Values
+
+In this dataset, there are missing values marked as 0. An example of how we can identify this by noting that a value of 0 for blood pressure does not make sense.
+
+```{r}
+newPIMA <- newPIMA %>%
+  mutate(glucoseConcentration = ifelse(glucoseConcentration == 0, NA_integer_, glucoseConcentration)) %>%
+  mutate(bloodPressure = ifelse(bloodPressure == 0, NA_integer_, bloodPressure)) %>%
+  mutate(skinThickness = ifelse(skinThickness == 0, NA_integer_, skinThickness)) %>%
+  mutate(insulin = ifelse(insulin == 0, NA_integer_, insulin)) %>%
+  mutate(bmi = ifelse(bmi == 0, NA_integer_, bmi))
+```
+
+## Save Files
+
+```{r}
+saveRDS(newPIMA, file = "../data/PIMA_wrangled.Rds")
+```

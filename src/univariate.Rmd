@@ -1,0 +1,128 @@
+---
+title: "Univariate Analysis"
+author: "Shukry Zablah"
+date: "December 4, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Imports
+
+```{r message=FALSE}
+library(dplyr)
+library(mosaic)
+library(ggplot2)
+```
+
+## Load Data
+
+```{r}
+PIMA <- readRDS(file = "../data/PIMA_wrangled.Rds")
+```
+
+## Global Characteristics
+
+```{r}
+names(PIMA)
+```
+
+Refer to the codebook at references/codebook.md
+
+```{r}
+dim(PIMA)
+```
+
+We have 768 observations with 8 features and our response variable.
+
+Let's take a look at some of the observations to familiarize ourselves with the dataset. 
+
+```{r}
+head(PIMA)
+```
+
+Our data is clean. We will consider creating new features if needed. 
+
+## Response Variable
+
+The response variable is RESPONSE. It is a binary variable. 0 = No Diabetes and 1 = Diabetes.
+
+```{r}
+tally(~ RESPONSE, data = PIMA)
+```
+
+We have 268 observations with Diabetes. This is a little over 50% of the dataset. 
+
+An interesting question: Why is the presence of diabetes in our population so high? 
+
+We have to be wary of generalizing our predictions if our dataset is not representative of the population that we are trying to predict. And if it is representative, then what is causing the PIMA Native American females to of 21+ years of age to test positive for diabetes? 
+
+## Other Features
+
+Descriptive statistics for the variables in our dataset are provided below: 
+
+```{r}
+summary(PIMA)
+```
+
+### Pregnancies
+
+```{r}
+ggplot(PIMA, aes(x = PRG)) + geom_bar()
+```
+
+With the exception of 0 pregnancies, the count of women decreases as the number of pregnancies increases. The count for women that had 10 pregnancies is still around 25. 
+
+### Plasma Glucose Concentration in Saliva
+
+```{r}
+ggplot(PIMA, aes(x = PLASMA)) + geom_histogram(binwidth = 10)
+```
+
+```{r}
+favstats(~ PLASMA, data = PIMA)
+```
+
+We can see that the plasma glucose concentrations in saliva have a unimodal and symmetric distribution with a mean of about 120 and a standard deviation of 32. There are some outliers at 0, which begs the question of what these values normally range for in humans. 
+
+### Diastolic Blood Pressure
+
+```{r}
+ggplot(PIMA, aes(x = BP)) + geom_histogram(binwidth = 10)
+```
+
+```{r}
+favstats(~ BP, data = PIMA)
+```
+
+The distribution of diastolic blood pressure is unimodal and symmetric. The distribution has a mean of about 69 and a standard deviation of 19. There appears to be some outliers in the leftmost side of the distribution. These women would supposedly have 0 BP, and have a count of around 30. We have to investigate if these are the same women that had the plasma glucose concentration of 0. And again, we have to find out what is the normal diastolic blood pressure of a 21+ human. 
+
+### Triceps skin fold thickness
+
+```{r}
+ggplot(PIMA, aes(x = THICK)) + geom_histogram(binwidth = 10)
+```
+
+```{r}
+favstats(~ THICK, data = PIMA)
+```
+
+The distribution for triceps skin fold thickness is bimodal. It appears that there is a recurrent theme of bad data collection. Without them, the right distribution is unimodal and symmetric about a mean of about almost 30 and a standard deviation of around 10.
+
+Segen's Medical Dictionary has the following entry for triceps skin-fold thickness: A value used to estimate body fat, measured on the right arm halfway between the olecranon process of the elbow and the acromial process of the scapula. Normal thickness in males is 12 mm; in females, 23 mm. 
+
+Our observations cannot have 0 as their value. Another observation is that we might be able to distill an ISOBESE variable based on this value.
+
+### Two Hours Serum Insulin
+
+```{r}
+ggplot(PIMA, aes(x = INSULIN)) + geom_histogram(binwidth = 50)
+```
+
+```{r}
+favstats(~ INSULIN, data = PIMA)
+```
+
+The distribution for the two hours test is 

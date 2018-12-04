@@ -1,0 +1,22 @@
+---
+title: "Read in"
+author: "Shukry Zablah"
+date: "December 4, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Download Data
+
+```{r}
+PIMA <- read.csv("https://pmatheson.people.amherst.edu/Pima.dat", header = FALSE)
+```
+
+## Save File
+
+```{r}
+saveRDS(PIMA, file = "../data/PIMA_original.Rds")
+```
