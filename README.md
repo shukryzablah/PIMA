@@ -32,7 +32,6 @@
 │   └── RandomForestClassifier_Full.Rds
 ├── PIMA.Rproj
 ├── README.md
-├── README.md~
 ├── reference
 │   ├── codebook.md
 │   └── relevantLinks.md
@@ -51,5 +50,5 @@
     ├── univariate.Rmd
     └── wrangle.Rmd
 
-5 directories, 24 files
+5 directories, 23 files
 ```
