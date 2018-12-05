@@ -1,6 +1,7 @@
 # PIMA
 
 ## TODO:
+0) **Send me your github usernames to be added as contributors**
 1) **Look at Demo to see final result /reports/Demo.pdf**
 2) **ADD YOUR NAMES TO THE SRC FILES**
 3) **Go over all the pdfs**
