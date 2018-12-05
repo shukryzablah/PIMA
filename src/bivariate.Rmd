@@ -1,0 +1,66 @@
+---
+title: "Multivariate Analysis"
+author: "Shukry Zablah"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Imports
+
+```{r}
+library(dplyr)
+library(mosaic)
+library(ggplot2)
+library(ggcorrplot)
+```
+
+## Load Data
+
+```{r}
+PIMA <- readRDS(file = "../data/PIMA_noNAs.Rds")
+```
+
+Note that the following analysis is done for the dataset without any missing values. 
+
+## Correlation of Variables
+
+```{r}
+PIMA %>%
+  select(-hasDiabetes) %>%
+  cor() %>% 
+  ggcorrplot()
+```
+
+In the correlation plot above we can see that there are some featured that are correlated. This is a hint that we might now need both features of a correlated pair in our model as they are likely to not add valuable information. We can see that the stronger correlated features are: 
+
+- insulin and glucose concentration:  `r with(PIMA, cor(insulin, glucoseConcentration))`
+- age and pregnancies:  `r with(PIMA, cor(age, pregnancies))`
+- bmi and skin thickness:  `r with(PIMA, cor(bmi, skinThickness))`
+
+## Multivariate Visualizations
+
+### Insulin and Glucose Concentration
+
+```{r}
+# viz for insulin vs glucoseConcentration (maybe include hasDiabetes?)
+```
+
+### Age and Pregnancies
+
+```{r}
+# viz for age vs pregnancies (maybe include hasDiabetes?) 
+```
+
+### BMI and Skin Thickness
+
+```{r}
+# viz for bmi and skin thickness (maybe include hasDiabetes?)
+```
+

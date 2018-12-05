@@ -1,0 +1,64 @@
+---
+title: "Demo"
+author: "Shukry Zablah"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Imports
+
+```{r}
+#import libraries
+```
+
+## Load Model
+
+```{r}
+clf <- readRDS(file = "../models/LogisticRegressionClassifier_Full.Rds")
+```
+
+## Load Test Set
+
+```{r}
+test <- readRDS(file = "../data/PIMA_test.Rds")
+```
+
+## Predicting Cases
+
+```{r}
+woman5 <- test %>%
+  filter(row_number() == 5)
+
+woman18 <- test %>%
+  filter(row_number() == 18)
+
+woman37 <- test %>%
+  filter(row_number() == 37)
+```
+
+We can see the single woman's observation from the test set. Now we predict what's the probability she has diabetes.
+
+```{r}
+predict(clf, type = "response", newdata = woman5)
+```
+
+And in fact we check and woman5 does have diabetes.
+
+```{r}
+predict(clf, type = "response", newdata = woman18)
+```
+
+And once again our model was correct, woman18 does not have diabetes.
+
+```{r}
+predict(clf, type = "response", newdata = woman37)
+```
+
+Our model is off here. It gives us a low probability prediction but the woman does indeed have diabetes. This is the kind of examples that we wanted to minimize by choosing a 0.3 cutoff. However, a lower cutoff would have been needed for this woman (at 0.2) to classify her correctly. 

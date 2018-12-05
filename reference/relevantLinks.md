@@ -6,3 +6,4 @@
 
 - This is a link to the kaggle kernel that compares different models in R: https://www.kaggle.com/laozhang/statistical-learning-with-r/notebook
 
+- This wikipedia page has a useful panel to familiarize with different measures of model evaluation: https://en.wikipedia.org/wiki/Receiver_operating_characteristic

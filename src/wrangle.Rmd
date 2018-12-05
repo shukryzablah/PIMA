@@ -1,8 +1,11 @@
 ---
 title: "Wrangle"
 author: "Shukry Zablah"
-date: "December 4, 2018"
-output: pdf_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -13,6 +16,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r message=FALSE}
 library(dplyr)
+library(tidyr)
+library(caTools)
 ```
 
 ## Load Data
@@ -49,8 +54,33 @@ newPIMA <- newPIMA %>%
   mutate(bmi = ifelse(bmi == 0, NA_integer_, bmi))
 ```
 
+## Impuation of Missing Values
+
+```{r}
+PIMA_noNAs <- PIMA %>% 
+  drop_na()
+
+dim(PIMA_noNAs)
+```
+There are 392 observations that don't have missing values. That's half of the data. We have to find a way to replace the missing values by sensive alternatives. For now, all work is done assuming we ignore the missing values.
+
+## Test/Train Split
+
+```{r}
+set.seed(100)
+
+split <- with(PIMA_noNAs, 
+              sample.split(hasDiabetes, SplitRatio = 0.75))
+
+PIMA_train <- subset(PIMA_noNAs, split == TRUE)
+PIMA_test <- subset(PIMA_noNAs, split == FALSE)
+```
+
 ## Save Files
 
 ```{r}
 saveRDS(newPIMA, file = "../data/PIMA_wrangled.Rds")
+saveRDS(PIMA_noNAs, file = "../data/PIMA_noNAs.Rds")
+saveRDS(PIMA_train, file = "../data/PIMA_train.Rds")
+saveRDS(PIMA_test, file = "../data/PIMA_test.Rds")
 ```

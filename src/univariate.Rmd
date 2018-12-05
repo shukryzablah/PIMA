@@ -1,8 +1,11 @@
 ---
 title: "Univariate Analysis"
 author: "Shukry Zablah"
-date: "December 4, 2018"
-output: pdf_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -43,17 +46,17 @@ Let's take a look at some of the observations to familiarize ourselves with the 
 head(PIMA)
 ```
 
-Our data is clean. We will consider creating new features if needed. 
+Our data is not clean, it is important to choose early on the technique we will use to deal with missing values. We could consider creating new features for modeling. 
 
 ## Response Variable
 
 The response variable is RESPONSE. It is a binary variable. 0 = No Diabetes and 1 = Diabetes.
 
 ```{r}
-tally(~ RESPONSE, data = PIMA)
+tally(~ hasDiabetes, data = PIMA)
 ```
 
-We have 268 observations with Diabetes. This is a little over 50% of the dataset. 
+We have 268 observations with Diabetes. This is around 35% of our dataset.
 
 An interesting question: Why is the presence of diabetes in our population so high? 
 
@@ -67,62 +70,112 @@ Descriptive statistics for the variables in our dataset are provided below:
 summary(PIMA)
 ```
 
+Missing data is not included in the visualizations below:
+
 ### Pregnancies
 
 ```{r}
-ggplot(PIMA, aes(x = PRG)) + geom_bar()
+ggplot(PIMA, aes(x = pregnancies)) + geom_bar()
 ```
 
 With the exception of 0 pregnancies, the count of women decreases as the number of pregnancies increases. The count for women that had 10 pregnancies is still around 25. 
 
 ### Plasma Glucose Concentration in Saliva
 
-```{r}
-ggplot(PIMA, aes(x = PLASMA)) + geom_histogram(binwidth = 10)
+```{r warning=FALSE}
+ggplot(PIMA, aes(x = glucoseConcentration)) + geom_histogram(binwidth = 10)
 ```
 
 ```{r}
-favstats(~ PLASMA, data = PIMA)
+favstats(~ glucoseConcentration, data = PIMA)
 ```
 
-We can see that the plasma glucose concentrations in saliva have a unimodal and symmetric distribution with a mean of about 120 and a standard deviation of 32. There are some outliers at 0, which begs the question of what these values normally range for in humans. 
+We can see that the plasma glucose concentrations in saliva have a unimodal and symmetric distribution with a mean of about 121.7 and a standard deviation of 30.5. 
+
+There were 5 observations missing a value for glucose concentration.
 
 ### Diastolic Blood Pressure
 
-```{r}
-ggplot(PIMA, aes(x = BP)) + geom_histogram(binwidth = 10)
+```{r warning=FALSE}
+ggplot(PIMA, aes(x = bloodPressure)) + geom_histogram(binwidth = 10)
 ```
 
 ```{r}
-favstats(~ BP, data = PIMA)
+favstats(~ bloodPressure, data = PIMA)
 ```
 
-The distribution of diastolic blood pressure is unimodal and symmetric. The distribution has a mean of about 69 and a standard deviation of 19. There appears to be some outliers in the leftmost side of the distribution. These women would supposedly have 0 BP, and have a count of around 30. We have to investigate if these are the same women that had the plasma glucose concentration of 0. And again, we have to find out what is the normal diastolic blood pressure of a 21+ human. 
+The distribution of diastolic blood pressure is unimodal and symmetric. The distribution has a mean of about 72.4 (mm Hg) and a standard deviation of 12.4 (mm Hg). How does this relate to the average diastolic blood pressure for females 21+ in general?
+
+There were 35 observations missing a value for blood pressure.
 
 ### Triceps skin fold thickness
 
-```{r}
-ggplot(PIMA, aes(x = THICK)) + geom_histogram(binwidth = 10)
+```{r warning=FALSE}
+ggplot(PIMA, aes(x = skinThickness)) + geom_histogram(binwidth = 10)
 ```
 
 ```{r}
-favstats(~ THICK, data = PIMA)
+favstats(~ skinThickness, data = PIMA)
 ```
 
-The distribution for triceps skin fold thickness is bimodal. It appears that there is a recurrent theme of bad data collection. Without them, the right distribution is unimodal and symmetric about a mean of about almost 30 and a standard deviation of around 10.
+The distribution for triceps skin fold thickness is unimodal and symmetric with a mean of 29.2 (mm) and a standard deviation of 10.5 (mm). 
 
 Segen's Medical Dictionary has the following entry for triceps skin-fold thickness: A value used to estimate body fat, measured on the right arm halfway between the olecranon process of the elbow and the acromial process of the scapula. Normal thickness in males is 12 mm; in females, 23 mm. 
 
-Our observations cannot have 0 as their value. Another observation is that we might be able to distill an ISOBESE variable based on this value.
+There were 227 observations with a missing value for skin thickness.
 
 ### Two Hours Serum Insulin
 
-```{r}
-ggplot(PIMA, aes(x = INSULIN)) + geom_histogram(binwidth = 50)
+```{r warning=FALSE}
+ggplot(PIMA, aes(x = insulin)) + geom_histogram(binwidth = 50)
 ```
 
 ```{r}
-favstats(~ INSULIN, data = PIMA)
+favstats(~ insulin, data = PIMA)
 ```
 
-The distribution for the two hours test is 
+The distribution for the two hours test is clearly skewed to the right and unimodal. It has a median of 125 (mu U/ml) and a IQR of 113.8 (mu U/ml). This means that 50% of the data lies between 76.25 (mu U/ml) and 190 (mu U/ml). There are some outliers in the far right of the tail with a maximum of 846 (mu U/ml).
+
+There were 374 observations with a missing value for the 2 hour insulin test.
+
+### Body Mass Index
+
+```{r warning=FALSE}
+ggplot(PIMA, aes(x = bmi)) + geom_histogram(binwidth = 5)
+```
+
+```{r}
+favstats(~ bmi, data = PIMA)
+```
+
+The distribution for bmi is unimodal and slightly skewed to the right. The distribution has mean of 32.5 kg/m^2 and a standard deviation of 6.9 kg/m^2. There are some outliers in the far right of the distribution representing obese people (the maximum is 67.1 kg/m^2). 
+
+There were 11 observations missing a value for bmi. 
+
+### Diabetes Pedigree Function
+
+```{r warning=FALSE}
+ggplot(PIMA, aes(x = diabetesPedigreeFunction)) + geom_histogram(binwidth = 0.1)
+```
+
+```{r}
+favstats(~ diabetesPedigreeFunction, data = PIMA)
+```
+
+The distribution for the values of the diabetes pedigree function is unimodal and skewed to the right. The distribution has a median score of 0.37 and the middle 50% of the observations had a score between 0.24 and 0.62. There are some outliers at the far right of the distribution. 
+
+There were 0 observations with missing values for this feature.
+
+### Age 
+
+```{r}
+ggplot(PIMA, aes(x = age)) + geom_histogram(binwidth = 5)
+```
+
+```{r}
+favstats(~ age, data = PIMA)
+```
+
+The distribution for age is unimodal and skewed to the right. The median age is 29 years and the middle 50% of the observations are between 24 years and 41 years of age. The maximum value for age is 81 years. 
+
+There are 0 observations missing a value for age.
