@@ -7,3 +7,7 @@
 - This is a link to the kaggle kernel that compares different models in R: https://www.kaggle.com/laozhang/statistical-learning-with-r/notebook
 
 - This wikipedia page has a useful panel to familiarize with different measures of model evaluation: https://en.wikipedia.org/wiki/Receiver_operating_characteristic
+
+- Another kaggle notebook to show a machine learning analysis: https://www.kaggle.com/futurist/pima-data-visualisation-and-machine-learning
+
+- Decision Trees in R: https://www.datacamp.com/community/tutorials/decision-trees-R 
