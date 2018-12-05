@@ -1,5 +1,7 @@
 # PIMA
 
+**ADD YOUR NAMES TO THE SRC FILES**
+
 - src: has all the code
 - reports: knitted pdfs go here
 - models: the data files (e.g. RDS) of the models go here
@@ -22,6 +24,12 @@
 │   ├── codebook.md
 │   └── relevantLinks.md
 ├── reports
+│   ├── Bivariate.pdf
+│   ├── Demo.pdf
+│   ├── Modeling.pdf
+│   ├── Readin.pdf
+│   ├── Univariate.pdf
+│   └── Wrangle.pdf
 └── src
     ├── bivariate.Rmd
     ├── demo.Rmd
@@ -30,5 +38,5 @@
     ├── univariate.Rmd
     └── wrangle.Rmd
 
-5 directories, 16 files
+5 directories, 22 files
 ```
