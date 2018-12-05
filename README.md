@@ -1,6 +1,15 @@
 # PIMA
 
-**ADD YOUR NAMES TO THE SRC FILES**
+## TODO:
+1) **Look at Demo to see final result /reports/Demo.pdf**
+2) **ADD YOUR NAMES TO THE SRC FILES**
+3) **Go over all the pdfs**
+4) **Checkout the updated codebook**
+5) **Simplify Model (remove correlated variables)**
+6) **Decide what to include in 3PageReport**
+7) **Finish bivariate analysis**
+8) **Decide if we will do another model**
+8) **Evaluate on Test Set**
 
 - src: has all the code
 - reports: knitted pdfs go here
