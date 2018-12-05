@@ -14,9 +14,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Imports
 
-```{r warning=FALSE}
+```{r warning=FALSE, message=FALSE}
 library(dplyr)
+library(mosaic)
 library(ROCR)
+library(randomForest)
+library(reprtree) #devtools::install_github('araastat/reprtree')
 ```
 
 ## Load Data
@@ -39,35 +42,63 @@ Any model we choose has to have an accuracy higher than 98/(98+196) = 33%. This 
 ### Training
 
 ```{r}
-clf <- glm(hasDiabetes ~ ., family = binomial(link='logit'), data = train)
-summary(clf)
-saveRDS(clf, file = "../models/LogisticRegressionClassifier_Full.Rds")
+clf_LR <- glm(hasDiabetes ~ ., family = binomial(link='logit'), data = train)
+summary(clf_LR)
+saveRDS(clf_LR, file = "../models/LogisticRegressionClassifier_Full.Rds")
 ```
 
 ### Model Evaluation on Train Set
 
 ```{r}
-predict <- predict(clf, type = 'response')
+predict_LR <- predict(clf_LR, type = 'response')
 
 with(train, 
-     table(hasDiabetes, predict > 0.3))
+     table(hasDiabetes, predict_LR > 0.3))
 ```
 
 We can see in the confusion matrix that our accuracy is (79 + 147)/(147 + 49 + 19 + 79) = 0.7687. This is with a cutoff of 0.3.
 
 ```{r}
-ROCRpred <- with(train, 
-                 prediction(predict, hasDiabetes))
+ROCRpred_LR <- with(train, 
+                 prediction(predict_LR, hasDiabetes))
 
-ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+ROCRperf_LR <- performance(ROCRpred_LR, 'tpr','fpr')
 
-plot(ROCRperf, colorize = TRUE, print.cutoffs.at = seq(0,1,0.1), text.adj = c(-0.2,1.7)); abline(0,1)
+plot(ROCRperf_LR, colorize = TRUE, print.cutoffs.at = seq(0,1,0.1), text.adj = c(-0.2,1.7)); abline(0,1)
 ```
 
 In the ROC curve we can see that our model is good (the curve is away from the diagonal). Since we care about not predicting a negative result for someone that is actually positive for diabetes (false negative rate), we want to have a larger true positive rate (1 - TPR = FNR). This means that we choose a cutoff near the blue part of the curve, the lower the cutoff the more cautious our model and the less accurate. 
 
-### Model Evaluation on Test Set
+## Random Forest Classifier
+
+### Training
 
 ```{r}
-#only after making decision of cutoff and dealing with missing values....
+clf_RF <- randomForest(hasDiabetes ~ ., data = train)
+saveRDS(clf_RF, file = "../models/RandomForestClassifier_Full.Rds")
 ```
+
+### Model Evaluation on the Train Set
+
+```{r}
+predict_RF <- predict(clf_RF, type = 'prob')
+
+with(train, 
+     table(hasDiabetes, predict_RF %>% as_tibble() %>% select(`1`) > 0.3))
+```
+
+We can see in the confusion matrix that our accuracy is (140 + 83)/(140 + 56 + 15 + 83) = 0.7585. The accuracy is slightly lower than the logistic regression model. 
+
+```{r}
+ROCRpred_RF <- with(train, 
+                 prediction(predict_RF %>% as_tibble() %>% select(`1`), hasDiabetes))
+
+ROCRperf_RF <- performance(ROCRpred_RF, 'tpr','fpr')
+
+plot(ROCRperf_RF, colorize = TRUE, print.cutoffs.at = seq(0,1,0.1), text.adj = c(-0.2,1.7)); abline(0,1)
+
+# plot only part of the representative tree
+#reprtree:::plot.getTree(clf_RF, depth = 5) 
+```
+
+The random forest ROC curve is less steep than the logisti regression roc curve. We still want to choose a low cutoff like 0.3 if we use this model.

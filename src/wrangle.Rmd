@@ -57,7 +57,7 @@ newPIMA <- newPIMA %>%
 ## Impuation of Missing Values
 
 ```{r}
-PIMA_noNAs <- PIMA %>% 
+PIMA_noNAs <- newPIMA %>% 
   drop_na()
 
 dim(PIMA_noNAs)

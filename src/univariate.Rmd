@@ -1,6 +1,6 @@
 ---
 title: "Univariate Analysis"
-author: "Shukry Zablah"
+author: " Shukry Zablah"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   pdf_document:

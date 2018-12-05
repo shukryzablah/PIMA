@@ -21,7 +21,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load Model
 
 ```{r}
-clf <- readRDS(file = "../models/LogisticRegressionClassifier_Full.Rds")
+clf_LR <- readRDS(file = "../models/LogisticRegressionClassifier_Full.Rds")
+clf_RF <- readRDS(file = "../models/RandomForestClassifier_Full.Rds")
 ```
 
 ## Load Test Set
@@ -45,20 +46,38 @@ woman37 <- test %>%
 
 We can see the single woman's observation from the test set. Now we predict what's the probability she has diabetes.
 
+### Logistic Regression Classifier
+
 ```{r}
-predict(clf, type = "response", newdata = woman5)
+predict(clf_LR, type = "response", newdata = woman5)
 ```
 
 And in fact we check and woman5 does have diabetes.
 
 ```{r}
-predict(clf, type = "response", newdata = woman18)
+predict(clf_LR, type = "response", newdata = woman18)
 ```
 
 And once again our model was correct, woman18 does not have diabetes.
 
 ```{r}
-predict(clf, type = "response", newdata = woman37)
+predict(clf_LR, type = "response", newdata = woman37)
 ```
 
 Our model is off here. It gives us a low probability prediction but the woman does indeed have diabetes. This is the kind of examples that we wanted to minimize by choosing a 0.3 cutoff. However, a lower cutoff would have been needed for this woman (at 0.2) to classify her correctly. 
+
+### Random Forest Classifer
+
+```{r}
+predict(clf_RF, type = "prob", newdata = woman5)[2]
+```
+
+```{r}
+predict(clf_RF, type = "prob", newdata = woman18)[2]
+```
+
+```{r}
+predict(clf_RF, type = "prob", newdata = woman37)[2]
+```
+
+In these three instances our models are close, but the random forest is overpredicting for these specific three cases.
