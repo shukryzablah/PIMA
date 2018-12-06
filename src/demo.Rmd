@@ -21,7 +21,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load Model
 
 ```{r}
-clf_LR <- readRDS(file = "../models/LogisticRegressionClassifier_Full.Rds")
+clf_LR_Full <- readRDS(file = "../models/LogisticRegressionClassifier_Full.Rds")
+clf_LR_Op <- readRDS(file = "../models/LogisticRegressionClassifier_Optimized.Rds")
 clf_RF <- readRDS(file = "../models/RandomForestClassifier_Full.Rds")
 ```
 
@@ -46,25 +47,39 @@ woman37 <- test %>%
 
 We can see the single woman's observation from the test set. Now we predict what's the probability she has diabetes.
 
-### Logistic Regression Classifier
+### Logistic Regression Classifier (Full)
 
 ```{r}
-predict(clf_LR, type = "response", newdata = woman5)
+predict(clf_LR_Full, type = "response", newdata = woman5)
 ```
 
 And in fact we check and woman5 does have diabetes.
 
 ```{r}
-predict(clf_LR, type = "response", newdata = woman18)
+predict(clf_LR_Full, type = "response", newdata = woman18)
 ```
 
 And once again our model was correct, woman18 does not have diabetes.
 
 ```{r}
-predict(clf_LR, type = "response", newdata = woman37)
+predict(clf_LR_Full, type = "response", newdata = woman37)
 ```
 
 Our model is off here. It gives us a low probability prediction but the woman does indeed have diabetes. This is the kind of examples that we wanted to minimize by choosing a 0.3 cutoff. However, a lower cutoff would have been needed for this woman (at 0.2) to classify her correctly. 
+
+### Logistic Regression Classifier (Optimized)
+
+```{r}
+predict(clf_LR_Op, type = "response", newdata = woman5)
+```
+
+```{r}
+predict(clf_LR_Op, type = "response", newdata = woman18)
+```
+
+```{r}
+predict(clf_LR_Op, type = "response", newdata = woman37)
+```
 
 ### Random Forest Classifer
 

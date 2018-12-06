@@ -7,6 +7,7 @@
 - data: any data file RDS go here
 
 ```
+
 .
 ├── data
 │   ├── PIMA_noNAs.Rds
@@ -29,6 +30,7 @@
 │   ├── Modeling.pdf
 │   ├── Readin.pdf
 │   ├── Univariate.pdf
+│   ├── UsefulVisualizations.pdf
 │   └── Wrangle.pdf
 └── src
     ├── bivariate.Rmd
@@ -39,5 +41,5 @@
     ├── usefulVisualizations.Rmd
     └── wrangle.Rmd
 
-5 directories, 25 files
+5 directories, 26 files
 ```
