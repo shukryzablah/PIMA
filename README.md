@@ -7,7 +7,6 @@
 - data: any data file RDS go here
 
 ```
-
 .
 ├── data
 │   ├── PIMA_noNAs.Rds
@@ -17,6 +16,7 @@
 │   └── PIMA_wrangled.Rds
 ├── models
 │   ├── LogisticRegressionClassifier_Full.Rds
+│   ├── LogisticRegressionClassifier_Optimized.Rds
 │   └── RandomForestClassifier_Full.Rds
 ├── PIMA.Rproj
 ├── README.md
@@ -36,7 +36,8 @@
     ├── modeling.Rmd
     ├── readin.Rmd
     ├── univariate.Rmd
+    ├── usefulVisualizations.Rmd
     └── wrangle.Rmd
 
-5 directories, 23 files
+5 directories, 25 files
 ```
