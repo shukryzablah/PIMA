@@ -1,13 +1,8 @@
-# PIMA
+# A Modeling Exercise Using the Pima Dataset
 
-- src: has all the code
-- reports: knitted pdfs go here
-- models: the data files (e.g. RDS) of the models go here
-- reference: any links and the codebook go here
-- data: any data file RDS go here
+A good place to start is the standalone TechnicalReport.pdf
 
 ```
-
 .
 ├── data
 │   ├── PIMA_noNAs.Rds
@@ -29,6 +24,7 @@
 │   ├── Demo.pdf
 │   ├── Modeling.pdf
 │   ├── Readin.pdf
+│   ├── TechnicalReport.pdf
 │   ├── Univariate.pdf
 │   ├── UsefulVisualizations.pdf
 │   └── Wrangle.pdf
@@ -37,9 +33,10 @@
     ├── demo.Rmd
     ├── modeling.Rmd
     ├── readin.Rmd
+    ├── technicalReport.Rmd
     ├── univariate.Rmd
     ├── usefulVisualizations.Rmd
     └── wrangle.Rmd
 
-5 directories, 26 files
+5 directories, 28 files
 ```
