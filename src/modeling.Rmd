@@ -19,29 +19,84 @@ library(MASS)
 library(dplyr)
 library(mosaic)
 library(ROCR)
+library(tibble)
 library(randomForest)
 library(caret)
 library(reprtree) #devtools::install_github('araastat/reprtree')
 ```
 
-## Load Data
+### Load Data
+
+The train and test split done was random and it was a 75% split. (Appendix B)
 
 ```{r}
-train <- readRDS(file = "../data/PIMA_train.Rds")
-test <- readRDS(file = "../data/PIMA_test.Rds")
+train <- readRDS(file = "../data/PIMA_train.Rds") #294 observations
+test <- readRDS(file = "../data/PIMA_test.Rds") #98 observations
 ```
 
-## Baseline
+### Baseline
+
+In machine learning it is necessary to have a baseline in order to see if our predictive models are of any use. Here, we chose to take that baseline as the percentage of people that have diabetes in our train set (almost equal to that of the whole dataset). 
 
 ```{r}
 tally(~ hasDiabetes, data = train)
 ```
 
-Any model we choose has to have an accuracy higher than 98/(98+196) = 33%. This is the baseline accuracy score.
+Any model we choose has to have an accuracy higher than 98/(98+196) = 33%. Otherwise, we are better off just guessing based on the population percentage.
 
-## Logistic Regression Classifier (Full)
+### Simple Model
 
-### Training
+From our previous analysis glucose concentration looks like the variable that is more predicitive of whether a woman has diabetes or not. Thus we create a simple logistic regression model based on this sole predictor.
+
+### Logistic Regression Classifier (Simple)
+
+#### Training
+
+```{r}
+Fit_LR_Simple <- train(hasDiabetes ~ glucoseConcentration, data = train, 
+                 method = "glm", 
+                 trControl = trainControl(method = "none"))
+clf_LR_Simple <- with(Fit_LR_Simple, finalModel)
+summary(clf_LR_Simple)
+```
+
+The model confirms that the glucoseConcentration is a significant predictor. This simple model has an AIC of 292.26. To better understand how good this value is we now we evaluate the model on the test set and see how well it performs.
+
+#### Model Evaluation on Test Set
+
+```{r}
+predict_LR_Simple <- predict(clf_LR_Simple, type = 'response', newdata = test)
+
+with(test,
+     table(hasDiabetes, predict_LR_Simple > 0.3))
+```
+
+We can see in the confusion matrix that our accuracy is (47 + 22)/(47 + 19 + 10 + 22) = 0.7041. This is with a cutoff of 0.3. 
+
+*Observation:* The cutoff of 0.3 was selected in order to reduce the number of false negatives of our model. We are prepared to sacrifice a tiny percentage of accuracy if it means that our model will be more useful when it comes to not misclassifying people with diabetes as not diabetic. It can be adjusted to create a more sensitive model.
+
+```{r}
+ROCRpred_LR_Simple <- with(test, 
+                 prediction(predict_LR_Simple, hasDiabetes))
+
+ROCRperf_LR_Simple <- performance(ROCRpred_LR_Simple, 'tpr','fpr')
+
+plot(ROCRperf_LR_Simple,
+     colorize = TRUE,
+     print.cutoffs.at = seq(0,1,0.1),
+     text.adj = c(-0.2,1.7),
+     main = "Simple Logistic Regression Performance"); abline(0,1)
+```
+
+We will compare these ROC curves to determine how the models specificity/sensitivity improves or worsens as we make our model more complicated, and how the overall accuracy changes. For now, we have to keep in mind that the closer the ROC curve is to the upper leftmost corner of the graph, the better the model is. 
+
+Let's see if we can do better than this.
+
+### Logistic Regression Classifier (Full)
+
+A logistic regression model with all the predictors should not be the final model we choose. Our previous multivariate analysis has shown that there are relationships between the variables that have to be ommitted from the final model. However, to know what variables we won't include, we will evaluate the full model.
+
+#### Training
 
 ```{r}
 set.seed(1)
@@ -56,19 +111,19 @@ saveRDS(clf_LR_Full, file = "../models/LogisticRegressionClassifier_Full.Rds")
 ```
 
 
-### Model Evaluation on Train Set
+#### Model Evaluation on Train Set
 
 ```{r}
-predict_LR_Full <- predict(clf_LR_Full, type = 'response')
+predict_LR_Full <- predict(clf_LR_Full, type = 'response', newdata = test)
 
-with(train, 
+with(test, 
      table(hasDiabetes, predict_LR_Full > 0.3))
 ```
 
-We can see in the confusion matrix that our accuracy is (79 + 147)/(147 + 49 + 19 + 79) = 0.7687. This is with a cutoff of 0.3.
+We can see in the confusion matrix that our accuracy is (46 + 25)/(46 + 20 + 7 + 25) = 0.7245. This is with a cutoff of 0.3. 
 
 ```{r}
-ROCRpred_LR_Full <- with(train, 
+ROCRpred_LR_Full <- with(test, 
                  prediction(predict_LR_Full, hasDiabetes))
 
 ROCRperf_LR_Full <- performance(ROCRpred_LR_Full, 'tpr','fpr')
@@ -77,15 +132,29 @@ plot(ROCRperf_LR_Full,
      colorize = TRUE,
      print.cutoffs.at = seq(0,1,0.1),
      text.adj = c(-0.2,1.7),
-     main = "Full Logistic Regression Performance")
-abline(0,1)
+     main = "Full Logistic Regression Performance"); abline(0,1)
 ```
 
-In the ROC curve we can see that our model is good (the curve is away from the diagonal). Since we care about not predicting a negative result for someone that is actually positive for diabetes (false negative rate), we want to have a larger true positive rate (1 - TPR = FNR). This means that we choose a cutoff near the blue part of the curve, the lower the cutoff the more cautious our model and the less accurate. 
+This model performed similarly to the simple model. The ROC curve looks a little more desirable for the full model, but as we have mentioned, the full model has some variables that we do not want to include in the final model.
+
+Let's have a look at the overall importance of all our varibles derived from the significance values from the glm output (scaled to add up to 100). 
+
+```{r}
+varImp(clf_LR_Full, scale = TRUE) %>% 
+  rownames_to_column("Variable") %>%
+  arrange(desc(Overall)) %>%
+  mutate(Overall = Overall/sum(Overall)*100)
+```
+
+From here we get an idea of what variables are the most predictive of the probability of having diabetes. Their seems to be tiers of importance. First, glucoseConcentration is significantly more important than the other variables. After, comes the pedigree function score and the bmi. This is good news for us because bmi is easy to calculate. Then comes number of pregnancies. And after that there are some weaker variables, the weakest of all being skinThickness, which adds next to no predictive ability to the model. Let's look at how we can use these results to optimize our model.
 
 ## Logistic Regression Classifier (Optimized)
 
+In this step we optimize the logistic regression to include only the variables that are useful in predicting the risk of diabetes for our observations.
+
 ### Training
+
+By performing a stepwise training we will be able to get the model that maximizes the AIC score and balances the number of predictors that are included. 
 
 ```{r}
 clf_LR_Op <- MASS::stepAIC(glm(hasDiabetes ~ 1, family = binomial(link='logit'),
@@ -104,19 +173,27 @@ summary(clf_LR_Op)
 saveRDS(clf_LR_Op, file = "../models/LogisticRegressionClassifier_Optimized.Rds")
 ```
 
+Here is the path that the model training took to arrive to that selection of variables.
+
+```{r}
+with(clf_LR_Op, anova)
+```
+
+Note that the model added age, but then after adding pregnancies it took a step backwards and eliminated age. This confirms our initial thought that either age or pregnancies would make it to the final model but not both. It turns out that pregnancies is a better predictor for the probability of having diabetes. 
+
 ### Model Evaluation on Train Set
 
 ```{r}
-predict_LR_Op <- predict(clf_LR_Op, type = 'response')
+predict_LR_Op <- predict(clf_LR_Op, type = 'response', newdata = test)
 
-with(train, 
+with(test, 
      table(hasDiabetes, predict_LR_Op > 0.3))
 ```
 
-We can see in the confusion matrix that our accuracy is (151 + 81)/(151 + 45 + 17 + 81) = 0.7891. This is with a cutoff of 0.3.
+We can see in the confusion matrix that our accuracy is (47 + 26)/(47 + 26 + 6 + 19) = 0.7449. This is with a cutoff of 0.3.
 
 ```{r}
-ROCRpred_LR_Op <- with(train, 
+ROCRpred_LR_Op <- with(test, 
                  prediction(predict_LR_Op, hasDiabetes))
 
 ROCRperf_LR_Op <- performance(ROCRpred_LR_Op, 'tpr','fpr')
@@ -125,12 +202,10 @@ plot(ROCRperf_LR_Op,
      colorize = TRUE,
      print.cutoffs.at = seq(0,1,0.1),
      text.adj = c(-0.2,1.7),
-     main = "Optimized Logistic Regression Performance")
-abline(0,1)
+     main = "Optimized Logistic Regression Performance"); abline(0,1)
 ```
 
-In the ROC curve we can see that our model is good (the curve is away from the diagonal). Comparing this to our previous full logistic regression model we can see that the models are almost the same, and the optimized version has the advantage of being simpler.
-
+In the ROC curve we can see that our model is also good (the curve is away from the diagonal). This model has an accuracy of 0.7449. 
 
 ## Random Forest Classifier
 
@@ -144,16 +219,16 @@ saveRDS(clf_RF, file = "../models/RandomForestClassifier_Full.Rds")
 ### Model Evaluation on the Train Set
 
 ```{r}
-predict_RF <- predict(clf_RF, type = 'prob')
+predict_RF <- predict(clf_RF, type = 'prob', newdata = test)
 
-with(train, 
+with(test, 
      table(hasDiabetes, (predict_RF %>% as_tibble() %>% dplyr::select(`1`)) > 0.3))
 ```
 
-We can see in the confusion matrix that our accuracy is (140 + 83)/(140 + 56 + 15 + 83) = 0.7585. The accuracy is slightly lower than the logistic regression model. 
+We can see in the confusion matrix that our accuracy is (45 + 25)/(45 + 25 + 7 + 21) = 0.7143. 
 
 ```{r}
-ROCRpred_RF <- with(train, 
+ROCRpred_RF <- with(test, 
                  prediction(predict_RF %>% as_tibble() %>% dplyr::select(`1`), hasDiabetes))
 
 ROCRperf_RF <- performance(ROCRpred_RF, 'tpr','fpr')

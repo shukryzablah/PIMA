@@ -1,0 +1,593 @@
+---
+title: "Technical Report"
+subtitle: "A Straightforward Analysis of the Pima Native American Dataset"
+author: "Shukry Zablah, Jack Koravos, Jasmine Horan, and Jayne Vogelzang"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    toc_depth: 5
+    fig_width: 7
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- This source file runs in less than 15 seconds. The way it is laid out is such that the knitted version is easy to follow. What you have to understand is that the hidden chunks (echo=FALSE) run in the necessary and correct order before the visible ones, but are repeated again in the appendices for organization (the second time they don't run).%
+
+The following file is going to run if your R and Rstudio configuration is correctly set up. The individual source files include parts that did not make it to this final report but are still available in the [repository](https://github.com/shukryzablah/PIMA). To install the necessary files check out appendix A. To see any preliminary read in and the wrangling data files check out the appendix B. To see any conditions check out Appendix C. Any issues or pull requests are appreciated.  --Shukry Zablah -->
+
+## Setup
+
+```{r, imports, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(caTools) 
+library(mosaic)
+library(ggplot2)
+library(ggcorrplot)
+library(ROCR)
+library(caret)
+library(tibble)
+library(car)
+library(ggthemes)
+```
+
+```{r, echo=FALSE}
+#set theme for ggplot
+theme_set(theme_classic())
+```
+
+<!-- The following chunks are the ones included in Appendix B. They must run here before the analysis in order for this file to be a standalone file. -->
+
+```{r, readin1, echo=FALSE}
+PIMA <- read.csv("https://pmatheson.people.amherst.edu/Pima.dat", header = FALSE)
+```
+
+```{r, wrangle1, echo=FALSE}
+names(PIMA) <- c("pregnancies", "glucoseConcentration",
+                    "bloodPressure", "skinThickness", "insulin",
+                    "bmi", "diabetesPedigreeFunction", "age", "hasDiabetes")
+```
+
+```{r, wrangle2, echo=FALSE}
+PIMA <- PIMA %>% 
+  mutate(hasDiabetes = as.factor(hasDiabetes))
+```
+
+```{r, wrangle3, echo=FALSE}
+PIMA <- PIMA %>%
+  mutate(glucoseConcentration = ifelse(glucoseConcentration == 0,
+                                       NA_integer_, glucoseConcentration)) %>%
+  mutate(bloodPressure = ifelse(bloodPressure == 0, NA_integer_, bloodPressure)) %>%
+  mutate(skinThickness = ifelse(skinThickness == 0, NA_integer_, skinThickness)) %>%
+  mutate(insulin = ifelse(insulin == 0, NA_integer_, insulin)) %>%
+  mutate(bmi = ifelse(bmi == 0, NA_integer_, bmi))
+```
+
+```{r, wrangle4, echo=FALSE}
+PIMA <- PIMA %>% 
+  drop_na()
+```
+
+```{r, wrangle5, echo=FALSE}
+set.seed(100)
+split <- with(PIMA, 
+              sample.split(hasDiabetes, SplitRatio = 0.75))
+
+train <- subset(PIMA, split == TRUE)
+test <- subset(PIMA, split == FALSE)
+```
+
+## Introduction
+
+To see how the data files were created you can check out Appendix B or [go to the actual source file in the repository](https://github.com/shukryzablah/PIMA/tree/master/src).
+
+Let's familiarize ourselves with the dataset.
+
+### Global Characteristics
+
+```{r}
+names(PIMA)
+```
+
+These are the variable names. You can check out a description for each variable in the codebook file in the references folder in the github repository. 
+
+```{r}
+dim(PIMA)
+```
+
+We have 768 observations with 8 features and our response variable.
+
+Let's take a look at some of the observations to familiarize ourselves with the dataset. 
+
+```{r}
+head(PIMA)
+```
+
+Descriptive statistics for the variables in our dataset are provided below.
+
+```{r}
+summary(PIMA)
+```
+
+We will not include our univariate analysis in this document, however, an important finding to keep in mind is that all the variables except glucose concentration and blood pressure were skewed to the right. These skewed distributions mean that most of our population is young. To generalize our findings this sample of about 400 women must be representative of the population of PIMA women as a whole. We proceed under this assumption.
+
+## Multivariate Analysis
+
+Before fitting any models we explore any relationships between the features in our dataset. Let's focus on the features.
+
+```{r}
+PIMA %>%
+  select(-hasDiabetes) %>%
+  cor() %>% 
+  ggcorrplot()
+```
+
+In the correlation plot above we can see that there are some featured that are correlated. This is a hint that we might not need both features of a correlated pair in our model as they are likely to not add valuable information. We can see that the strongest correlated features are: 
+
+- insulin and glucose concentration:  `r cor(insulin ~ glucoseConcentration, data = PIMA)`
+- age and pregnancies:  `r cor(age ~ pregnancies, data = PIMA)`
+- bmi and skin thickness:  `r cor(bmi ~ skinThickness, data = PIMA)`
+
+### Visualizations
+
+We decided to include the following visualizations that were helpful in observing trends and relationships between the variables: 
+
+#### Percentages of Diabetes in Binned Pregnancies Groups
+
+```{r}
+pregnancies_labels <- c("0", "1-3", "4-6", "7-9", "10 or more")
+PIMA %>%
+  mutate(pregnancies = cut(pregnancies,
+                           breaks = c(-.5,.5,3.5,6.5,9.5, 50),
+                           labels = pregnancies_labels)) %>%
+  group_by(pregnancies, hasDiabetes) %>%
+  summarize(count = n()) %>%
+  spread(hasDiabetes, count) %>%
+  mutate(percentage = round(100*(`1`/(`0`+`1`)),1)) %>%
+  ggplot(aes(x = pregnancies, y = percentage, label = paste0(percentage, "%"))) + 
+    geom_bar(stat = "identity", fill = "navy", color = "black") + 
+    geom_text(vjust=1.5, size = 7, color="white") +
+    labs(x = "Number of Pregnancies", 
+         y = "Percent Diabetic",
+         title = "The Prevalence of Diabetes by Number of Pregnancies") + 
+    scale_x_discrete(limits = pregnancies_labels) 
+```
+
+In the graph above we can see that the number of pregnancies is correlated with the percentage of people that have diabetes. In particular, there is a significant increase in percentage of diabetic PIMA women in the groups of women that had 7 or more pregnancies. In the context of this study however, the number of pregnancies might not be as an important feature as it appears to be. 
+Recall the correlation of pregnancies and age for our observations. The correlation between those two variables is `r cor(pregnancies ~ age, data = PIMA)`. The value supports the idea that both variables are probably not going to make it to the final model. Later on we will test which variable explains more of the variation of our response. 
+
+*Observation:* You might be wondering why the first column in the visual is higher than the expected value. A possible explanation for this comes from not being able to discern missing values from the actual data (both coded with 0). To read more about this go to Appendix B. 
+
+#### Percentages of Diabetes in Binned BMI Groups
+
+```{r}
+bmi_labels <- c("18.2 - 26.2", "26.3 - 30.2",
+                  "30.3 - 34.2", "34.3 - 38.2", "38.3 and up")
+PIMA %>%
+  mutate(bmi = cut(bmi,
+                           breaks = c(0,26.2, 30.2, 34.2, 38.2, 100),
+                           labels = bmi_labels)) %>%
+  group_by(bmi, hasDiabetes) %>%
+  summarize(count = n()) %>%
+  spread(hasDiabetes, count) %>%
+  mutate(percentage = round(100*(`1`/(`0`+`1`)),1)) %>%
+  ggplot(aes(x = bmi, y = percentage, label = paste0(percentage, "%"))) + 
+    geom_bar(stat = "identity", fill = "dark red", color = "black") + 
+    geom_text(vjust=1.5, size = 7, color="white") +
+    labs(x = "BMI (Body Mass Index)", 
+         y = "Percent Diabetic",
+         title = "The Prevalence of Diabetes by BMI") + 
+    scale_x_discrete(limits = bmi_labels) 
+```
+
+In this graph we can see a strong positive relationship between the bmi range and the percentage of diabetic women in the group. For reference, The three rightmost columns are women that would be considered obese ([as given by bmi cutoffs](https://www.nhlbi.nih.gov/health/educational/lose_wt/BMI/bmicalc.htm)). There is a slight dip in the group of women with the highest bmi, which is too small of a signal to delve into, but could be explained if the bmi of a women was related with whether they have diabetes or not only up to a certain score. Perhaps past a score, BMI does not indicate a higher chance of having diabetes. 
+
+#### Percentages of Diabetes in Binned Glucose Concentration Groups
+
+```{r}
+glucose_labels <- c("56 - 96", "97 - 116",
+                    "117 - 146", "147 and up")
+PIMA %>%
+  mutate(glucoseConcentration = cut(glucoseConcentration,
+                           breaks = c(50, 96, 116, 146, 200),
+                           labels = glucose_labels)) %>%
+  group_by(glucoseConcentration, hasDiabetes) %>%
+  summarize(count = n()) %>%
+  spread(hasDiabetes, count) %>%
+  mutate(percentage = round(100*(`1`/(`0`+`1`)),1)) %>%
+  ggplot(aes(x = glucoseConcentration,
+             y = percentage,
+             label = paste0(percentage, "%"))) + 
+    geom_bar(stat = "identity", fill = "#660066", color = "black") + 
+    geom_text(vjust=1.5, size = 7, color="white") +
+    labs(x = "Plasma Glucose Concentration (Saliva)", 
+         y = "Percent Diabetic",
+         title = "The Prevalence of Diabetes by Glucose Concentration") + 
+    scale_x_discrete(limits = glucose_labels) 
+```
+
+Again, we have a very strong positive relationship between the bins of plasma glucose concentration in saliva and the percentage of women who are diabetic in those groups. This relationship indicates that glucose concentration is a good variable to include in our model.
+
+#### Percentages of Diabetes in Binned Diabetes Pedigree Function
+
+```{r}
+pedigree_labels <- c("0.085 - 0.235", "0.236 - 0.385",
+                     "0.386 - 0.685", "0.685 and up")
+PIMA %>%
+  mutate(diabetesPedigreeFunction = cut(diabetesPedigreeFunction, 
+                           breaks = c(0,0.235, 0.385, 0.685, 3),
+                           labels = pedigree_labels)) %>%
+  group_by(diabetesPedigreeFunction, hasDiabetes) %>%
+  summarize(count = n()) %>%
+  spread(hasDiabetes, count) %>%
+  mutate(percentage = round(100*(`1`/(`0`+`1`)),1)) %>%
+  ggplot(aes(x = diabetesPedigreeFunction,
+             y = percentage,
+             label = paste0(percentage, "%"))) + 
+    geom_bar(stat = "identity", fill = "#009966", color = "black") + 
+    geom_text(vjust=1.5, size = 7, color="white") +
+    labs(x = "Pedigree Function Score", 
+         y = "Percent Diabetic",
+         title = "The Prevalence of Diabetes by Pedigree") + 
+    scale_x_discrete(limits = pedigree_labels) 
+```
+
+The diabetes pedigree function score bins also show to be related to a larger percentage of women who have diabetes. This is another variable that will be useful to include in our model, especially because it has a low correlation with the glucose concentration feature. (cor = `r cor(glucoseConcentration~ diabetesPedigreeFunction, data = PIMA)`).
+
+In the next section we will start training and evaluating models that will help us assess the risk of diabetes for individual observations.
+
+## Modeling
+
+This section contains anything related to finding the best model for predicting the probability of having diabetes. The general layout is as follows: 
+
+- Create baseline
+- Form a model with one predictor
+- Form a model with all predictors
+- Optimize and select significant predictors
+
+At every point we will evaluate the models on the test set so that we get an idea of how much improvement our work is generating.
+
+*Observation:* If you want to see if our models satisfy their assumptions, go over to Appendix C. 
+
+### Baseline
+
+In machine learning it is necessary to have a baseline in order to see if our predictive models are of any use. Here, we chose to take that baseline as the percentage of people that have diabetes in our train set (almost equal to that of the whole dataset). 
+
+```{r}
+tally(~ hasDiabetes, data = train)
+```
+
+Any model we choose has to have an accuracy higher than 98/(98+196) = 33%. Otherwise, we are better off just guessing based on the population percentage.
+
+### Simple Classifier
+
+From our previous analysis glucose concentration looks like the variable that is more predicitive of whether a woman has diabetes or not. Thus we create a simple logistic regression model based on this sole predictor.
+
+#### Training
+
+```{r}
+Fit_LR_Simple <- train(hasDiabetes ~ glucoseConcentration, data = train, 
+                 method = "glm", 
+                 trControl = trainControl(method = "none"))
+clf_LR_Simple <- with(Fit_LR_Simple, finalModel)
+summary(clf_LR_Simple)
+```
+
+The model confirms that the glucoseConcentration is a significant predictor. This simple model has an AIC of 292.26. To better understand how good this value is we now we evaluate the model on the test set and see how well it performs.
+
+#### Model Evaluation on Test Set
+
+```{r}
+predict_LR_Simple <- predict(clf_LR_Simple, type = 'response', newdata = test)
+
+with(test,
+     table(hasDiabetes, predict_LR_Simple > 0.3))
+```
+
+We can see in the confusion matrix that our accuracy is (47 + 22)/(47 + 19 + 10 + 22) = 0.7041. This is with a cutoff of 0.3. 
+
+*Observation:* The cutoff of 0.3 was selected in order to reduce the number of false negatives of our model. We are prepared to sacrifice a tiny percentage of accuracy if it means that our model will be more useful when it comes to not misclassifying people with diabetes as not diabetic. It can be adjusted to create a more sensitive model.
+
+#### Model Performance Visualization
+
+```{r}
+ROCRpred_LR_Simple <- with(test, 
+                 prediction(predict_LR_Simple, hasDiabetes))
+
+ROCRperf_LR_Simple <- performance(ROCRpred_LR_Simple, 'tpr','fpr')
+
+plot(ROCRperf_LR_Simple,
+     colorize = TRUE,
+     print.cutoffs.at = seq(0,1,0.1),
+     text.adj = c(-0.2,1.7),
+     main = "Simple Logistic Regression Performance"); abline(0,1)
+```
+
+We will compare these ROC curves to determine how the models specificity/sensitivity improves or worsens as we make our model more complicated, and how the overall accuracy changes. For now, we have to keep in mind that the closer the ROC curve is to the upper leftmost corner of the graph, the better the model is. 
+
+Let's see if we can do better than this.
+
+### Full Classifier
+
+A logistic regression model with all the predictors should not be the final model we choose. Our previous multivariate analysis has shown that there are relationships between the variables that have to be ommitted from the final model. However, to know what variables we won't include, we will evaluate the full model.
+
+#### Training
+
+```{r}
+set.seed(1)
+Fit_LR_Full <- train(hasDiabetes ~ ., data = train, 
+                 method = "glm", 
+                 trControl = trainControl(method = "none"))
+clf_LR_Full <- with(Fit_LR_Full, finalModel)
+#this is the same model as:
+####glm(hasDiabetes ~ ., family = binomial(link = "logit"), data = train)
+#there are advantages to familiarizing with the caret machine learning package
+
+summary(clf_LR_Full)
+```
+
+
+#### Model Evaluation on Test Set
+
+```{r}
+predict_LR_Full <- predict(clf_LR_Full, type = 'response', newdata = test)
+
+with(test, 
+     table(hasDiabetes, predict_LR_Full > 0.3))
+```
+
+We can see in the confusion matrix that our accuracy is (46 + 25)/(46 + 20 + 7 + 25) = 0.7245. This is with a cutoff of 0.3. 
+
+#### Model Performance Visualization
+
+```{r}
+ROCRpred_LR_Full <- with(test, 
+                 prediction(predict_LR_Full, hasDiabetes))
+
+ROCRperf_LR_Full <- performance(ROCRpred_LR_Full, 'tpr','fpr')
+
+plot(ROCRperf_LR_Full,
+     colorize = TRUE,
+     print.cutoffs.at = seq(0,1,0.1),
+     text.adj = c(-0.2,1.7),
+     main = "Full Logistic Regression Performance"); abline(0,1)
+```
+
+This model performed similarly to the simple model. The ROC curve looks a little more desirable for the full model, but as we have mentioned, the full model has some variables that we do not want to include in the final model.
+
+Let's have a look at the overall importance of all our varibles derived from the significance values from the glm output (scaled to add up to 100). 
+
+```{r}
+varImp(clf_LR_Full, scale = TRUE) %>% 
+  rownames_to_column("Variable") %>%
+  arrange(desc(Overall)) %>%
+  mutate(Importance = Overall/sum(Overall)*100)
+```
+
+From here we get an idea of what variables are the most predictive of the probability of having diabetes. Their seems to be tiers of importance. First, glucoseConcentration is significantly more important than the other variables. After, comes the pedigree function score and the bmi. This is good news for us because bmi is easy to calculate. Then comes number of pregnancies. And after that there are some weaker variables, the weakest of all being skinThickness, which adds next to no predictive ability to the model. Let's look at how we can use these results to optimize our model.
+
+### Optimized Classifier
+
+In this step we optimize the logistic regression to include only the variables that are useful in predicting the risk of diabetes for our observations.
+
+#### Training
+
+By performing a stepwise training we will be able to get the model that maximizes the AIC score and balances the number of predictors that are included. 
+
+```{r}
+clf_LR_Op <- MASS::stepAIC(glm(hasDiabetes ~ 1, family = binomial(link='logit'),
+                      data=train),
+                  list(upper = ~ pregnancies +
+                         glucoseConcentration +
+                         bloodPressure +
+                         skinThickness +
+                         insulin + 
+                         bmi + 
+                         diabetesPedigreeFunction + 
+                         age),
+                  direction="both",
+                  trace = FALSE)
+summary(clf_LR_Op)
+```
+
+Here is the path that the model training took to arrive to that selection of variables.
+
+```{r}
+with(clf_LR_Op, anova)
+```
+
+Note that the model added age, but then after adding pregnancies it took a step backwards and eliminated age. This confirms our initial thought that either age or pregnancies would make it to the final model but not both. It turns out that pregnancies is a better predictor for the probability of having diabetes. 
+
+#### Model Evaluation on Train Set
+
+```{r}
+predict_LR_Op <- predict(clf_LR_Op, type = 'response', newdata = test)
+
+with(test, 
+     table(hasDiabetes, predict_LR_Op > 0.3))
+```
+
+We can see in the confusion matrix that our accuracy is (47 + 26)/(47 + 26 + 6 + 19) = 0.7449. This is with a cutoff of 0.3.
+
+#### Model Performance Visualization
+
+```{r}
+ROCRpred_LR_Op <- with(test, 
+                 prediction(predict_LR_Op, hasDiabetes))
+
+ROCRperf_LR_Op <- performance(ROCRpred_LR_Op, 'tpr','fpr')
+
+plot(ROCRperf_LR_Op,
+     colorize = TRUE,
+     print.cutoffs.at = seq(0,1,0.1),
+     text.adj = c(-0.2,1.7),
+     main = "Optimized Logistic Regression Performance"); abline(0,1)
+```
+
+In the ROC curve we can see that our model is also good (the curve is away from the diagonal). This model has an accuracy of 0.7449. 
+
+In the repository you can look at other things we tried out that performed similarly to the logistic regressions, but don't have the advantage of being as simple.
+
+## Results
+
+We have created three models. The summary statistics for those three models are the following: 
+
+```{r}
+Results <- tibble(Model = factor(c("Simple", "Full", "Optimized")), 
+       AIC = c(clf_LR_Simple$aic, clf_LR_Full$aic, clf_LR_Op$aic), 
+       Accuracy = c(0.7041, 0.7245, 0.7449),
+       FalseNegativeRate = c(10/(10+22), 7/(7+25), 6/(6+26)),
+       NumVars = c(1, 8, 4)) 
+```
+
+```{r}
+ggplot(Results, aes(x = Model, y = NumVars, fill = Model)) +
+  geom_bar(stat = "identity") + 
+  labs(title = "Number of Variables in Model") + 
+  coord_flip() +
+  scale_fill_colorblind()
+```
+
+These are the three models that we are comparing. Notice that the number of variables adds complexity to the model, and it becomes harder for individuals to use it to predict the risk of diabetes. In this regard, the simple model has its advantages, but that is why we create the optimized model, because it has parts of the advantages of being simple and still being a good model for predicting probability of having diabetes. 
+
+```{r}
+ggplot(Results, aes(x = Model, y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Accuracy of Models") + 
+  coord_flip() +
+  scale_fill_colorblind()
+```
+
+Our most accurate model was the optimized model. However, note that the accuracies for all the models are similar.
+
+```{r}
+ggplot(Results, aes(x = Model, y = AIC, fill = Model)) +
+  geom_bar(stat = "identity") +
+  labs(title = "AIC of Models") + 
+  coord_flip() +
+  scale_fill_colorblind()
+```
+
+A lower AIC score is a better score. Again, the best model is the optimized model.
+
+```{r}
+ggplot(Results, aes(x = Model, y = FalseNegativeRate, fill = Model)) +
+  geom_bar(stat = "identity") +
+  labs(title = "False Negative Rate of Models") + 
+  coord_flip() +
+  scale_fill_colorblind()
+```
+
+Here there is a slightly more sizeable difference between the performance of our best model and the simple and full model. Our optimized model has a false negative rate of 18.8% compared to 21.9% of the full model and an uncomfortable 31.2% of the Simple model.
+
+Thus we choose the optimized model.
+
+## Conlusion
+
+Overall, the three models created were similarly accurate, had similar scores, but the advantage of 12.4 percentage points between the false negative rates of the simple and the optimized models suggest that we should be using the optimized model. As said earlier, we would not want to misclassify the women that actually have diabetes into the category of women that don't have diabetes. 
+
+The dataset we explored was limited to 21 year old Pima Native American women. This can be generalized to the population of Pima women if we assume that the sample was representative. However, generalizing these results to Pima Native American men, or other larger American populations would be extrapolating the results. 
+
+Additionally, the fact that these variables are predictive of whether an individual has diabetes does not mean that there is a causal link between them. 
+
+Despite these comments, we offer a set of recommendations based on the findings of this study. 
+
+1) Encourage physical activity. Create programs that involve multiple sessions of physical engagement in order to maintain a healthy bmi. 
+2) Promote the idea of knowing your family's medical history, if other members of your family have diabetes then your risk of diabetes is going to be higher.
+3) Distribute educational materials showing the relationship between the number of pregnancies and the risk of having diabetes. 
+4) Invest in blood/saliva glucose monitors and allow people free access to them. (Blood glucose and saliva glucose levels have been shown to be strongly correlated).
+
+\newpage
+
+## Appendix A: Installation Instructions
+
+To install the required packages you need to run the following command: 
+
+```{r, install, eval=FALSE}
+install.packages(c(
+  "dplyr", 
+  "tidyr",
+  "caTools",
+  "mosaic",
+  "ggplot2",
+  "ggcorrplot",
+  "tibble",
+  "MASS", 
+  "ROCR", 
+  "caret",
+  "car",
+  "ggthemes"
+))
+```
+
+To run this command you can paste it to your R console. You can also remove those that are already installed if you know what you are doing.
+
+## Appendix B: Data Preprocessing
+
+First the file is read in. 
+
+```{r, readin1,  eval=FALSE}
+```
+
+Variable names are then assigned.
+
+```{r, wrangle1, eval=FALSE}
+```
+
+Any variable type corrections are done next.
+
+```{r, wrangle2, eval=FALSE}
+```
+
+The data at this point would have missing data, but since it is coded as 0 we have to mark it. This is done in this step.
+
+```{r, wrangle3, eval=FALSE}
+```
+
+Once we have marked the missing data, since we don't perform any imputation, we drop those observations. 
+
+```{r, wrangle4, eval=FALSE}
+```
+
+Finally, in order to prepare for our modeling section, we split our data set and creat our train and our test sets. 
+
+```{r, wrangle5, eval=FALSE}
+```
+
+## Appendix C: Checking Model Assumptions
+
+In this appendix we verify that the assumptions of logistic regression are met. 
+
+First, we can safely assume that the observations are independent. 
+
+Second, we check if there is multicollinearity. 
+
+```{r}
+vif(clf_LR_Op)
+```
+
+In general a vif value of 5 is indicative of a problem with collinearity. All the predictors have vif values less than 5. 
+
+Lastly, we check if the predictors have a linear relationship to the logit of the outcome's probability (this is the log odds of the outcome's probability).
+
+```{r}
+train %>% 
+  mutate(LogOdds = predict(clf_LR_Op)) %>%
+  select(-hasDiabetes) %>%
+  gather(key = "predictor", value = "predictorValue", -LogOdds) %>% 
+  ggplot(aes(x = predictorValue, y = LogOdds)) + geom_point() +
+    facet_wrap(~predictor, scales = "free_x") + 
+    geom_smooth(method = "loess") + 
+    labs(title = "Checking for Linearity Condition in GLM")
+```
+
+We can see that all the variables are linearly related to the log odds of the outcomes. Thus this condition is satisfied. 
+
+Lastly, we have a large enough sample size.
+
+Hence, all conditions are satistfied for our logistic regression model. 

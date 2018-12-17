@@ -6,7 +6,7 @@
 
 ## glucoseConcentration
 
-- Glucose: Plasma glucose concentration a 2 hours in an oral glucose tolerance test
+- Glucose: Plasma glucose concentration in a 2 hours in an oral glucose tolerance test
 
 ## bloodPressure
 
